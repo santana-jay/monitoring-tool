@@ -1,14 +1,12 @@
 from django.contrib import admin
 from .models import MonitoringSystem, Metric, Incident, PatternAnomaly
 
-
 @admin.register(MonitoringSystem)
 class MonitoringSystemAdmin(admin.ModelAdmin):
     list_display = ['name', 'system_type', 'host', 'status', 'last_check']
     list_filter = ['system_type', 'status']
     search_fields = ['name', 'host']
     readonly_fields = ['created_at', 'last_check']
-
 
 @admin.register(Metric)
 class MetricAdmin(admin.ModelAdmin):
@@ -18,7 +16,6 @@ class MetricAdmin(admin.ModelAdmin):
     ordering = ['-time']
     readonly_fields = ['time']
 
-
 @admin.register(Incident)
 class IncidentAdmin(admin.ModelAdmin):
     list_display = ['title', 'system', 'severity', 'status', 'created_at']
@@ -26,7 +23,6 @@ class IncidentAdmin(admin.ModelAdmin):
     search_fields = ['title', 'description']
     ordering = ['-created_at']
     readonly_fields = ['created_at']
-
 
 @admin.register(PatternAnomaly)
 class PatternAnomalyAdmin(admin.ModelAdmin):
