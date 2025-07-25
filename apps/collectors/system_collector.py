@@ -63,8 +63,7 @@ def collect_local_system_metrics():
                 'metric_value': net_io.bytes_sent,
                 'unit': 'bytes',
                 'tags': {'component': 'network', 'direction': 'in'}
-            }
-
+            },
             {
                 'metric_name': 'network_bytes_received',
                 'metric_value': net_io.bytes_recv,
