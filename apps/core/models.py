@@ -66,7 +66,7 @@ class Incident(models.Model):
     title = models.CharField(max_length=200)
     description = models.TextField()
     severity = models.CharField(max_length=20, choices=SEVERITY_CHOICES)
-    status = models.CharField(max_length=20, choices=SEVERITY_CHOICES, default='OPEN')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='OPEN')
     root_cause = models.TextField(blank=True)
     resolved_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
