@@ -1,32 +1,204 @@
 from django.contrib import admin
-from .models import MonitoringSystem, Metric, Incident, PatternAnomaly
+from django.utils.html import format_html
+from django.urls import reverse
+from django.utils.safestring import mark_safe
+from .models import (
+    Category, Ticket, TicketComment, Solution, 
+    TicketSolution, TicketPattern, TicketAnalytics
+)
 
-@admin.register(MonitoringSystem)
-class MonitoringSystemAdmin(admin.ModelAdmin):
-    list_display = ['name', 'system_type', 'host', 'status', 'last_check']
-    list_filter = ['system_type', 'status']
-    search_fields = ['name', 'host']
-    readonly_fields = ['created_at', 'last_check']
 
-@admin.register(Metric)
-class MetricAdmin(admin.ModelAdmin):
-    list_display = ['time', 'system', 'metric_name', 'metric_value', 'unit']
-    list_filter = ['system', 'metric_name', 'time']
-    date_hierarchy = 'time'
-    ordering = ['-time']
-    readonly_fields = ['time']
+@admin.register(Category)
+class CategoryAdmin(admin.ModelAdmin):
+    list_display = ['name', 'parent', 'ticket_count', 'color_display']
+    list_filter = ['parent']
+    search_fields = ['name', 'description']
+    prepopulated_fields = {'name': ()}
+    
+    def ticket_count(self, obj):
+        return obj.ticket_set.count()
+    ticket_count.short_description = 'Tickets'
+    
+    def color_display(self, obj):
+        return format_html(
+            '<div style="width: 30px; height: 20px; background-color: {}; border: 1px solid #ccc;"></div>',
+            obj.color
+        )
+    color_display.short_description = 'Color'
 
-@admin.register(Incident)
-class IncidentAdmin(admin.ModelAdmin):
-    list_display = ['title', 'system', 'severity', 'status', 'created_at']
-    list_filter = ['severity', 'status', 'system', 'created_at']
-    search_fields = ['title', 'description']
-    ordering = ['-created_at']
+
+class TicketCommentInline(admin.TabularInline):
+    model = TicketComment
+    extra = 0
     readonly_fields = ['created_at']
+    fields = ['author', 'content', 'is_internal', 'created_at']
 
-@admin.register(PatternAnomaly)
-class PatternAnomalyAdmin(admin.ModelAdmin):
-    list_display = ['system', 'anomaly_type', 'confidence_score', 'detected_at']
-    list_filter = ['system', 'anomaly_type', 'detected_at']
-    ordering = ['-detected_at']
-    readonly_fields = ['detected_at']
+
+class TicketSolutionInline(admin.TabularInline):
+    model = TicketSolution
+    extra = 0
+    readonly_fields = ['applied_at']
+    fields = ['solution', 'was_successful', 'notes', 'applied_by', 'applied_at']
+
+
+@admin.register(Ticket)
+class TicketAdmin(admin.ModelAdmin):
+    list_display = [
+        'id', 'title', 'status', 'priority', 'category', 
+        'assigned_to', 'created_by', 'created_at', 'resolution_time_display'
+    ]
+    list_filter = [
+        'status', 'priority', 'category', 'created_at', 
+        'assigned_to', 'resolved_at'
+    ]
+    search_fields = ['title', 'description', 'resolution']
+    readonly_fields = [
+        'created_at', 'updated_at', 'resolved_at', 'closed_at', 
+        'resolution_time_minutes', 'resolution_time_display'
+    ]
+    date_hierarchy = 'created_at'
+    
+    fieldsets = (
+        ('Basic Information', {
+            'fields': ('title', 'description', 'category', 'priority')
+        }),
+        ('Assignment', {
+            'fields': ('created_by', 'assigned_to', 'status')
+        }),
+        ('System Information', {
+            'fields': ('system_info',),
+            'classes': ('collapse',)
+        }),
+        ('Resolution', {
+            'fields': ('resolution', 'resolution_time_display'),
+            'classes': ('collapse',)
+        }),
+        ('Timestamps', {
+            'fields': (
+                'created_at', 'updated_at', 'resolved_at', 
+                'closed_at', 'resolution_time_minutes'
+            ),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    inlines = [TicketCommentInline, TicketSolutionInline]
+    
+    def resolution_time_display(self, obj):
+        if obj.resolution_time_minutes:
+            hours = obj.resolution_time_minutes // 60
+            minutes = obj.resolution_time_minutes % 60
+            if hours > 0:
+                return f"{hours}h {minutes}m"
+            return f"{minutes}m"
+        return "Not resolved"
+    resolution_time_display.short_description = 'Resolution Time'
+    
+    actions = ['mark_resolved', 'mark_closed', 'assign_to_me']
+    
+    def mark_resolved(self, request, queryset):
+        updated = queryset.update(status='RESOLVED')
+        self.message_user(request, f'{updated} tickets marked as resolved.')
+    mark_resolved.short_description = 'Mark selected tickets as resolved'
+    
+    def mark_closed(self, request, queryset):
+        updated = queryset.update(status='CLOSED')
+        self.message_user(request, f'{updated} tickets marked as closed.')
+    mark_closed.short_description = 'Mark selected tickets as closed'
+    
+    def assign_to_me(self, request, queryset):
+        updated = queryset.update(assigned_to=request.user)
+        self.message_user(request, f'{updated} tickets assigned to you.')
+    assign_to_me.short_description = 'Assign selected tickets to me'
+
+
+@admin.register(TicketComment)
+class TicketCommentAdmin(admin.ModelAdmin):
+    list_display = ['ticket', 'author', 'content_preview', 'is_internal', 'created_at']
+    list_filter = ['is_internal', 'created_at', 'author']
+    search_fields = ['content', 'ticket__title']
+    readonly_fields = ['created_at']
+    
+    def content_preview(self, obj):
+        return obj.content[:100] + '...' if len(obj.content) > 100 else obj.content
+    content_preview.short_description = 'Content'
+
+
+@admin.register(Solution)
+class SolutionAdmin(admin.ModelAdmin):
+    list_display = [
+        'title', 'category', 'success_rate_display', 
+        'times_suggested', 'times_successful', 'is_active'
+    ]
+    list_filter = ['category', 'is_active', 'created_at']
+    search_fields = ['title', 'description', 'keywords']
+    readonly_fields = ['times_suggested', 'times_successful', 'success_rate_display', 'created_at', 'updated_at']
+    
+    fieldsets = (
+        ('Solution Details', {
+            'fields': ('title', 'description', 'steps', 'category', 'keywords')
+        }),
+        ('Effectiveness', {
+            'fields': (
+                'times_suggested', 'times_successful', 'success_rate_display'
+            ),
+            'classes': ('collapse',)
+        }),
+        ('Metadata', {
+            'fields': ('created_by', 'is_active', 'created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def success_rate_display(self, obj):
+        rate = obj.success_rate
+        color = 'green' if rate >= 70 else 'orange' if rate >= 40 else 'red'
+        return format_html(
+            '<span style="color: {};">{:.1f}%</span>',
+            color, rate
+        )
+    success_rate_display.short_description = 'Success Rate'
+
+
+@admin.register(TicketSolution)
+class TicketSolutionAdmin(admin.ModelAdmin):
+    list_display = ['ticket', 'solution', 'was_successful', 'applied_by', 'applied_at']
+    list_filter = ['was_successful', 'applied_at', 'applied_by']
+    search_fields = ['ticket__title', 'solution__title', 'notes']
+    readonly_fields = ['applied_at']
+
+
+@admin.register(TicketPattern)
+class TicketPatternAdmin(admin.ModelAdmin):
+    list_display = [
+        'pattern_type', 'confidence_score', 'helpfulness_display',
+        'times_matched', 'is_active', 'last_seen'
+    ]
+    list_filter = ['pattern_type', 'is_active', 'category', 'discovered_at']
+    search_fields = ['matching_keywords', 'pattern_data']
+    readonly_fields = ['discovered_at', 'last_seen', 'times_matched', 'times_helpful', 'helpfulness_display']
+    filter_horizontal = ['suggested_solutions']
+    
+    def helpfulness_display(self, obj):
+        rate = obj.helpfulness_rate
+        color = 'green' if rate >= 70 else 'orange' if rate >= 40 else 'red'
+        return format_html(
+            '<span style="color: {};">{:.1f}%</span>',
+            color, rate
+        )
+    helpfulness_display.short_description = 'Helpfulness Rate'
+
+
+@admin.register(TicketAnalytics)
+class TicketAnalyticsAdmin(admin.ModelAdmin):
+    list_display = [
+        'date', 'tickets_created', 'tickets_resolved', 
+        'tickets_closed', 'avg_resolution_time'
+    ]
+    list_filter = ['date']
+    readonly_fields = ['created_at']
+    date_hierarchy = 'date'
+    
+    def has_add_permission(self, request):
+        # Analytics should be generated automatically
+        return False
