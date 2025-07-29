@@ -132,3 +132,8 @@ LOGGING = {
         'level': 'INFO',
     },
 }
+
+# Add this near the bottom of your settings.py file
+STATIC_ROOT = BASE_DIR / 'staticfiles'  # ← Add this line
+MEDIA_URL = '/media/'                   # ← Add this line  
+MEDIA_ROOT = BASE_DIR / 'media'         # ← Add this line

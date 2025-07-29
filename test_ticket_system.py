@@ -22,6 +22,7 @@ from apps.core.models import Category, Ticket, Solution, TicketComment, TicketSo
 from apps.core.utils import SolutionSuggestionEngine, PatternAnalyzer
 from django.contrib.auth.models import User
 from django.utils import timezone
+from datetime import timedelta
 
 
 def test_models():
@@ -124,7 +125,7 @@ def test_pattern_analysis(test_data):
     """Test the pattern analysis engine"""
     print("\n🔍 Testing Pattern Analysis Engine...")
     
-    # Create additional test tickets for pattern analysis
+    # Create more tickets with similar patterns
     category = test_data['category']
     user = test_data['user']
     
@@ -138,12 +139,15 @@ def test_pattern_analysis(test_data):
     ]
     
     for i, title in enumerate(printer_issues):
+        # Use timezone-aware datetime
+        created_time = timezone.now() - timedelta(hours=i)
         ticket = Ticket.objects.create(
             title=title,
             description=f"Having issues with the office printer. {title.lower()} and need assistance.",
             category=category,
             priority="MEDIUM",
-            created_by=user
+            created_by=user,
+            created_at=created_time
         )
         similar_tickets.append(ticket)
     

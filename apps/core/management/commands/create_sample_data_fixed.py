@@ -7,7 +7,7 @@ import random
 
 
 class Command(BaseCommand):
-    help = 'Create sample data for testing the ticket system'
+    help = 'Create sample data for testing the ticket system (timezone-safe version)'
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -22,12 +22,21 @@ class Command(BaseCommand):
             default=20,
             help='Number of sample solutions to create (default: 20)',
         )
+        parser.add_argument(
+            '--clean',
+            action='store_true',
+            help='Clean existing sample data first',
+        )
 
     def handle(self, *args, **options):
         num_tickets = options['tickets']
         num_solutions = options['solutions']
+        clean_first = options['clean']
         
-        self.stdout.write('🏗️  Creating sample data for testing...')
+        self.stdout.write('🏗️  Creating sample data for testing (timezone-safe)...')
+        
+        if clean_first:
+            self.clean_sample_data()
         
         # Create sample users if they don't exist
         users = self.create_sample_users()
@@ -38,10 +47,10 @@ class Command(BaseCommand):
         # Create solutions
         solutions = self.create_solutions(categories, users, num_solutions)
         
-        # Create tickets
-        tickets = self.create_tickets(categories, users, num_tickets)
+        # Create tickets (the safe way)
+        tickets = self.create_tickets_safe(categories, users, num_tickets)
         
-        # Add some comments and solution applications
+        # Add some interactions
         self.add_interactions(tickets, solutions, users)
         
         self.stdout.write(
@@ -53,6 +62,18 @@ class Command(BaseCommand):
                 f'   🎫 Tickets: {len(tickets)}'
             )
         )
+
+    def clean_sample_data(self):
+        """Clean existing sample data"""
+        self.stdout.write('🧹 Cleaning existing sample data...')
+        
+        # Delete tickets with sample patterns
+        Ticket.objects.filter(title__contains=' - #').delete()
+        
+        # Delete test solutions
+        Solution.objects.filter(title__contains='Test Solution').delete()
+        
+        self.stdout.write('   ✅ Cleanup completed')
 
     def create_sample_users(self):
         """Create sample users for testing"""
@@ -141,12 +162,11 @@ class Command(BaseCommand):
         solutions = []
         category_map = {cat.name: cat for cat in categories}
         
-        for i, sol_data in enumerate(solutions_data * (num_solutions // len(solutions_data) + 1)):
-            if len(solutions) >= num_solutions:
-                break
-                
+        for i in range(num_solutions):
+            sol_data = solutions_data[i % len(solutions_data)]
+            
             solution = Solution.objects.create(
-                title=f"{sol_data['title']} {i+1}" if i >= len(solutions_data) else sol_data['title'],
+                title=f"{sol_data['title']}" + (f" {i+1}" if i >= len(solutions_data) else ""),
                 description=sol_data['description'],
                 steps=sol_data['steps'],
                 keywords=sol_data['keywords'],
@@ -159,8 +179,8 @@ class Command(BaseCommand):
         
         return solutions
 
-    def create_tickets(self, categories, users, num_tickets):
-        """Create sample tickets"""
+    def create_tickets_safe(self, categories, users, num_tickets):
+        """Create tickets using a timezone-safe approach"""
         ticket_templates = [
             {
                 'title': 'Computer won\'t start',
@@ -201,9 +221,7 @@ class Command(BaseCommand):
         for i in range(num_tickets):
             template = random.choice(ticket_templates)
             
-            # Create ticket with some randomization - use timezone-aware datetime
-            created_date = timezone.now() - timedelta(days=random.randint(1, 60))
-            
+            # Create ticket and let Django handle the timestamps
             ticket = Ticket.objects.create(
                 title=f"{template['title']} - #{i+1}",
                 description=template['description'],
@@ -218,18 +236,23 @@ class Command(BaseCommand):
                 }
             )
             
-            # Update the created_at after creation to our desired date
-            ticket.created_at = created_date
-            ticket.save()
+            # Now safely update the created_at to a past date
+            days_ago = random.randint(1, 60)
+            ticket.created_at = timezone.now() - timedelta(days=days_ago)
             
-            # Set resolved/closed dates for completed tickets - use timezone-aware dates
+            # Handle resolved/closed tickets safely
             if ticket.status in ['RESOLVED', 'CLOSED']:
-                # Use the ticket's created_at (which is now timezone-aware) for calculations
-                ticket.resolved_at = ticket.created_at + timedelta(hours=random.randint(1, 72))
+                # Set resolved_at to sometime after created_at
+                hours_to_resolve = random.randint(1, 72)
+                ticket.resolved_at = ticket.created_at + timedelta(hours=hours_to_resolve)
+                
                 if ticket.status == 'CLOSED':
-                    ticket.closed_at = ticket.resolved_at + timedelta(hours=random.randint(1, 24))
-                ticket.save()
+                    # Set closed_at to sometime after resolved_at
+                    hours_to_close = random.randint(1, 24)
+                    ticket.closed_at = ticket.resolved_at + timedelta(hours=hours_to_close)
             
+            # Save all changes at once
+            ticket.save()
             tickets.append(ticket)
         
         return tickets
@@ -255,15 +278,19 @@ class Command(BaseCommand):
             # Apply some solutions
             if random.random() > 0.4 and solutions:
                 solution = random.choice(solutions)
-                TicketSolution.objects.create(
-                    ticket=ticket,
-                    solution=solution,
-                    was_successful=random.choice([True, False, None]),
-                    notes=random.choice([
-                        "User confirmed this fixed the issue.",
-                        "Partially worked, needs additional steps.",
-                        "Didn't work, trying alternative approach.",
-                        "Solution completed successfully.",
-                    ]),
-                    applied_by=random.choice([u for u in users if u.username.startswith('tech')])
-                )
+                try:
+                    TicketSolution.objects.create(
+                        ticket=ticket,
+                        solution=solution,
+                        was_successful=random.choice([True, False, None]),
+                        notes=random.choice([
+                            "User confirmed this fixed the issue.",
+                            "Partially worked, needs additional steps.",
+                            "Didn't work, trying alternative approach.",
+                            "Solution completed successfully.",
+                        ]),
+                        applied_by=random.choice([u for u in users if u.username.startswith('tech')])
+                    )
+                except Exception:
+                    # Skip if there's a unique constraint violation
+                    pass

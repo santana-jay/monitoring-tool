@@ -66,9 +66,21 @@ class Ticket(models.Model):
         # Calculate resolution time when ticket is resolved
         if self.status == 'RESOLVED' and not self.resolved_at:
             self.resolved_at = timezone.now()
-            if self.created_at:
-                delta = self.resolved_at - self.created_at
-                self.resolution_time_minutes = int(delta.total_seconds() / 60)
+        
+        # Calculate resolution time if both dates are available
+        if self.resolved_at and self.created_at and not self.resolution_time_minutes:
+            # Ensure both datetimes are timezone-aware for calculation
+            resolved_at = self.resolved_at
+            created_at = self.created_at
+            
+            # Make sure both are timezone-aware
+            if timezone.is_naive(resolved_at):
+                resolved_at = timezone.make_aware(resolved_at)
+            if timezone.is_naive(created_at):
+                created_at = timezone.make_aware(created_at)
+                
+            delta = resolved_at - created_at
+            self.resolution_time_minutes = int(delta.total_seconds() / 60)
         
         # Set closed time when ticket is closed
         if self.status == 'CLOSED' and not self.closed_at:
@@ -126,8 +138,8 @@ class Solution(models.Model):
     @property
     def success_rate(self):
         if self.times_suggested == 0:
-            return 0
-        return (self.times_successful / self.times_suggested) * 100
+            return 0.0
+        return float((self.times_successful / self.times_suggested) * 100)
 
     def __str__(self):
         return self.title
@@ -195,8 +207,8 @@ class TicketPattern(models.Model):
     @property
     def helpfulness_rate(self):
         if self.times_matched == 0:
-            return 0
-        return (self.times_helpful / self.times_matched) * 100
+            return 0.0
+        return float((self.times_helpful / self.times_matched) * 100)
 
     def __str__(self):
         return f"{self.pattern_type} Pattern (Confidence: {self.confidence_score}%)"

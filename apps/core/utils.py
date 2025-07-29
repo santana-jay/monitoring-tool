@@ -51,7 +51,7 @@ class SolutionSuggestionEngine:
             for solution in category_solutions:
                 suggestions.append({
                     'solution': solution,
-                    'confidence_score': 0.7 + (solution.success_rate / 100) * 0.3,
+                    'confidence_score': 0.7 + (float(solution.success_rate) / 100) * 0.3,
                     'match_reason': f"Same category: {ticket.category.name}",
                     'suggested_by': 'category_match'
                 })
@@ -119,7 +119,7 @@ class SolutionSuggestionEngine:
             if common_keywords:
                 # Calculate match score based on keyword overlap
                 overlap_ratio = len(common_keywords) / max(len(ticket_keywords), len(solution_keywords))
-                success_bonus = solution.success_rate / 100 * 0.3
+                success_bonus = float(solution.success_rate) / 100 * 0.3
                 confidence_score = min(0.95, overlap_ratio * 0.7 + success_bonus)
                 
                 matches.append((solution, confidence_score, list(common_keywords)))
@@ -146,7 +146,7 @@ class SolutionSuggestionEngine:
             category_match = pattern.category == category if pattern.category else False
             
             if keyword_matches or category_match:
-                confidence = pattern.confidence_score / 100 * 0.8
+                confidence = float(pattern.confidence_score) / 100 * 0.8
                 if category_match:
                     confidence += 0.2
                 
