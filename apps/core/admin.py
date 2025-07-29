@@ -154,15 +154,33 @@ class SolutionAdmin(admin.ModelAdmin):
     )
     
     def success_rate_display(self, obj):
+        """Display success rate with proper SafeString handling"""
         try:
-            rate = float(obj.success_rate)
-            color = 'green' if rate >= 70 else 'orange' if rate >= 40 else 'red'
+            if obj.times_suggested == 0:
+                return format_html('<span style="color: gray;">0.0%</span>')
+            
+            rate = (obj.times_successful / obj.times_suggested) * 100
+            rate = min(rate, 100.0)  # Cap at 100%
+            
+            # Format the percentage first as a regular string
+            rate_str = f"{rate:.1f}%"
+            
+            # Color coding
+            if rate >= 70:
+                color = 'green'
+            elif rate >= 40:
+                color = 'orange'  
+            else:
+                color = 'red'
+            
+            # Use format_html with pre-formatted string
             return format_html(
-                '<span style="color: {};">{:.1f}%</span>',
-                color, rate
+                '<span style="color: {}; font-weight: bold;">{}</span>',
+                color, rate_str
             )
-        except (TypeError, ValueError):
-            return "N/A"
+        except Exception as e:
+            # Show the actual error for debugging
+            return format_html('<span style="color: red;">Error: {}</span>', str(e))
     success_rate_display.short_description = 'Success Rate'
 
 
@@ -186,15 +204,32 @@ class TicketPatternAdmin(admin.ModelAdmin):
     filter_horizontal = ['suggested_solutions']
     
     def helpfulness_display(self, obj):
+        """Display helpfulness rate with proper SafeString handling"""
         try:
-            rate = float(obj.helpfulness_rate)
-            color = 'green' if rate >= 70 else 'orange' if rate >= 40 else 'red'
+            if obj.times_matched == 0:
+                return format_html('<span style="color: gray;">0.0%</span>')
+            
+            rate = (obj.times_helpful / obj.times_matched) * 100
+            rate = min(rate, 100.0)  # Cap at 100%
+            
+            # Format the percentage first as a regular string
+            rate_str = f"{rate:.1f}%"
+            
+            # Color coding
+            if rate >= 70:
+                color = 'green'
+            elif rate >= 40:
+                color = 'orange'  
+            else:
+                color = 'red'
+            
+            # Use format_html with pre-formatted string
             return format_html(
-                '<span style="color: {};">{:.1f}%</span>',
-                color, rate
+                '<span style="color: {}; font-weight: bold;">{}</span>',
+                color, rate_str
             )
-        except (TypeError, ValueError):
-            return "N/A"
+        except Exception as e:
+            return format_html('<span style="color: red;">Error: {}</span>', str(e))
     helpfulness_display.short_description = 'Helpfulness Rate'
 
 
