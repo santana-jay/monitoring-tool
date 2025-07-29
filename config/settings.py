@@ -10,7 +10,7 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'fallback-secret-key')
 DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
 
 # Codespaces friendly hosts
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0', '.githubpreview.dev', '.app.github.dev']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0', '.githubpreview.dev', '.app.github.dev', 'testserver']
 
 INSTALLED_APPS = [
     'daphne',  # Required for Channels 4.x

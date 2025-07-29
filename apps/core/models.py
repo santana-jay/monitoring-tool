@@ -139,7 +139,9 @@ class Solution(models.Model):
     def success_rate(self):
         if self.times_suggested == 0:
             return 0.0
-        return float((self.times_successful / self.times_suggested) * 100)
+        # Ensure we never return more than 100%
+        rate = float((self.times_successful / self.times_suggested) * 100)
+        return min(rate, 100.0)
 
     def __str__(self):
         return self.title
@@ -208,7 +210,9 @@ class TicketPattern(models.Model):
     def helpfulness_rate(self):
         if self.times_matched == 0:
             return 0.0
-        return float((self.times_helpful / self.times_matched) * 100)
+        # Ensure we never return more than 100%
+        rate = float((self.times_helpful / self.times_matched) * 100)
+        return min(rate, 100.0)
 
     def __str__(self):
         return f"{self.pattern_type} Pattern (Confidence: {self.confidence_score}%)"

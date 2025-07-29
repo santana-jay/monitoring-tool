@@ -21,11 +21,12 @@ from .utils import SolutionSuggestionEngine, PatternAnalyzer
 class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
 
 
 class TicketViewSet(viewsets.ModelViewSet):
-    permission_classes = [permissions.IsAuthenticated]
+    queryset = Ticket.objects.all()  # Add base queryset
+    permission_classes = [permissions.AllowAny]
     
     def get_serializer_class(self):
         if self.action == 'list':
@@ -36,7 +37,7 @@ class TicketViewSet(viewsets.ModelViewSet):
             return TicketDetailSerializer
     
     def get_queryset(self):
-        queryset = Ticket.objects.select_related(
+        queryset = super().get_queryset().select_related(
             'category', 'created_by', 'assigned_to'
         ).prefetch_related('comments', 'tried_solutions')
         
@@ -275,7 +276,8 @@ class TicketViewSet(viewsets.ModelViewSet):
 
 
 class SolutionViewSet(viewsets.ModelViewSet):
-    permission_classes = [permissions.IsAuthenticated]
+    queryset = Solution.objects.all()  # Add base queryset
+    permission_classes = [permissions.AllowAny]
     
     def get_serializer_class(self):
         if self.action == 'list':
@@ -284,7 +286,7 @@ class SolutionViewSet(viewsets.ModelViewSet):
             return SolutionDetailSerializer
     
     def get_queryset(self):
-        queryset = Solution.objects.filter(is_active=True).select_related('category', 'created_by')
+        queryset = super().get_queryset().filter(is_active=True).select_related('category', 'created_by')
         
         # Filter by category
         category_id = self.request.query_params.get('category')
@@ -325,7 +327,7 @@ class SolutionViewSet(viewsets.ModelViewSet):
 class PatternViewSet(viewsets.ModelViewSet):
     queryset = TicketPattern.objects.filter(is_active=True)
     serializer_class = TicketPatternSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
     
     @action(detail=False, methods=['post'])
     def analyze_patterns(self, request):
@@ -343,7 +345,7 @@ class PatternViewSet(viewsets.ModelViewSet):
 class UserViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = User.objects.filter(is_active=True)
     serializer_class = UserSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
     
     @action(detail=False, methods=['get'])
     def technicians(self, request):

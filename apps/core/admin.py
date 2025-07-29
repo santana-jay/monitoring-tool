@@ -85,13 +85,16 @@ class TicketAdmin(admin.ModelAdmin):
     inlines = [TicketCommentInline, TicketSolutionInline]
     
     def resolution_time_display(self, obj):
-        if obj.resolution_time_minutes:
-            hours = obj.resolution_time_minutes // 60
-            minutes = obj.resolution_time_minutes % 60
-            if hours > 0:
-                return f"{hours}h {minutes}m"
-            return f"{minutes}m"
-        return "Not resolved"
+        try:
+            if obj.resolution_time_minutes:
+                hours = obj.resolution_time_minutes // 60
+                minutes = obj.resolution_time_minutes % 60
+                if hours > 0:
+                    return f"{hours}h {minutes}m"
+                return f"{minutes}m"
+            return "Not resolved"
+        except (TypeError, AttributeError):
+            return "N/A"
     resolution_time_display.short_description = 'Resolution Time'
     
     actions = ['mark_resolved', 'mark_closed', 'assign_to_me']
@@ -151,12 +154,15 @@ class SolutionAdmin(admin.ModelAdmin):
     )
     
     def success_rate_display(self, obj):
-        rate = obj.success_rate
-        color = 'green' if rate >= 70 else 'orange' if rate >= 40 else 'red'
-        return format_html(
-            '<span style="color: {};">{:.1f}%</span>',
-            color, rate
-        )
+        try:
+            rate = float(obj.success_rate)
+            color = 'green' if rate >= 70 else 'orange' if rate >= 40 else 'red'
+            return format_html(
+                '<span style="color: {};">{:.1f}%</span>',
+                color, rate
+            )
+        except (TypeError, ValueError):
+            return "N/A"
     success_rate_display.short_description = 'Success Rate'
 
 
@@ -180,12 +186,15 @@ class TicketPatternAdmin(admin.ModelAdmin):
     filter_horizontal = ['suggested_solutions']
     
     def helpfulness_display(self, obj):
-        rate = obj.helpfulness_rate
-        color = 'green' if rate >= 70 else 'orange' if rate >= 40 else 'red'
-        return format_html(
-            '<span style="color: {};">{:.1f}%</span>',
-            color, rate
-        )
+        try:
+            rate = float(obj.helpfulness_rate)
+            color = 'green' if rate >= 70 else 'orange' if rate >= 40 else 'red'
+            return format_html(
+                '<span style="color: {};">{:.1f}%</span>',
+                color, rate
+            )
+        except (TypeError, ValueError):
+            return "N/A"
     helpfulness_display.short_description = 'Helpfulness Rate'
 
 
