@@ -1,0 +1,14 @@
+# Meeting Co-pilot local files
+.env
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+data/
+models/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+build/
+dist/
