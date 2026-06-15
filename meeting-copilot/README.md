@@ -106,6 +106,9 @@ cp .env.example .env
 
 ## Run
 
+> Just want to run it locally for your own meetings? See the focused
+> single-operator quickstart in [`RUNNING.md`](RUNNING.md).
+
 ```bash
 meeting-copilot           # or: python -m copilot
 ```
